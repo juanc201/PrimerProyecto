@@ -1,0 +1,83 @@
+# 1️⃣ Librerías
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Configuración visual
+sns.set(style="whitegrid")
+
+# 2️⃣ Cargar dataset
+df = pd.read_csv("Facebook Live Sellers en Tailandia.csv", encoding="utf-8")
+
+# 3️⃣ Selección de variables numéricas para clustering
+# Nos enfocamos en las variables que reflejan la interacción
+features = [
+    'num_reactions', 'num_comments', 'num_shares',
+    'num_likes', 'num_loves', 'num_wows',
+    'num_hahas', 'num_sads', 'num_angrys'
+]
+
+X = df[features]
+
+# 4️⃣ Escalado de los datos (normalización)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 5️⃣ Determinar número de clusters con el método del codo
+inertia = []
+K_range = range(1, 11)
+
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertia.append(kmeans.inertia_)
+
+# Graficar el método del codo
+plt.figure(figsize=(8,5))
+plt.plot(K_range, inertia, marker='o', color='royalblue')
+plt.xlabel("Número de clusters (k)")
+plt.ylabel("Inercia")
+plt.title("Método del codo para determinar el número óptimo de clusters (Facebook Live)")
+plt.xticks(K_range)
+plt.show()
+
+# 6️⃣ Aplicar K-Means con K = 4 (nuevo valor)
+k = 4
+kmeans = KMeans(n_clusters=k, random_state=42)
+df['cluster'] = kmeans.fit_predict(X_scaled)
+
+# 7️⃣ Revisar centros de los clusters (en valores originales)
+centers = pd.DataFrame(
+    scaler.inverse_transform(kmeans.cluster_centers_),
+    columns=features
+)
+centers['cluster'] = range(k)
+print("Centros de los clusters (K = 4):")
+print(centers.round(2))
+
+# 8️⃣ Visualización de los clusters (por ejemplo, Reacciones vs Comentarios)
+plt.figure(figsize=(8,6))
+sns.scatterplot(
+    x='num_reactions',
+    y='num_comments',
+    hue='cluster',
+    palette='Set2',
+    data=df,
+    alpha=0.7
+)
+plt.title("Clusters de transmisiones de Facebook Live (Reacciones vs Comentarios) - K=4")
+plt.xlabel("Número de reacciones")
+plt.ylabel("Número de comentarios")
+plt.legend(title='Cluster')
+plt.show()
+
+# 9️⃣ Promedio de interacciones por grupo (resumen)
+cluster_summary = df.groupby('cluster')[features].mean().round(2)
+print("\nPromedio de interacciones por grupo:")
+print(cluster_summary)
+
+# 10️⃣ Tamaño de cada grupo
+print("\nTamaño de cada cluster:")
+print(df['cluster'].value_counts().sort_index())
